@@ -2,9 +2,11 @@
 
 import type { Player, NetworkData } from "@/types";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
-import { Coins, HelpCircle } from "lucide-react";
+import { Coins, HelpCircle, Star, TrendingUp } from "lucide-react";
 import { AiSuggestions } from "./ai-suggestions";
 import { Separator } from "./ui/separator";
+import { Progress } from "./ui/progress";
+import { getXpForNextLevel } from "@/lib/game-data";
 
 interface InfoPanelProps {
   player: Player;
@@ -13,6 +15,9 @@ interface InfoPanelProps {
 }
 
 export function InfoPanel({ player, networkData, onUpgradeRoute }: InfoPanelProps) {
+  const xpForNextLevel = getXpForNextLevel(player.level);
+  const xpProgress = (player.xp / xpForNextLevel) * 100;
+
   return (
     <div className="flex flex-col h-full p-4 space-y-4 bg-sidebar text-sidebar-foreground">
       <Card className="bg-sidebar-accent text-sidebar-accent-foreground">
@@ -29,6 +34,22 @@ export function InfoPanel({ player, networkData, onUpgradeRoute }: InfoPanelProp
           <p className="text-xs text-muted-foreground">CURRENCY</p>
         </CardContent>
       </Card>
+
+      <Card className="bg-sidebar-accent text-sidebar-accent-foreground">
+        <CardHeader>
+          <CardTitle className="flex items-center text-2xl">
+            <Star className="mr-2 text-yellow-400" />
+            Level {player.level}
+          </CardTitle>
+          <CardDescription>
+            {player.xp.toLocaleString()} / {xpForNextLevel.toLocaleString()} XP
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Progress value={xpProgress} className="h-2" />
+        </CardContent>
+      </Card>
+
 
       <div className="flex-grow">
         <AiSuggestions 

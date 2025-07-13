@@ -4,6 +4,11 @@ export const UPGRADE_COST = 1500;
 export const UNLOCK_COST = 5000;
 export const BUILD_ROUTE_COST = 2500;
 
+export const XP_FOR_UPGRADE = 50;
+export const XP_FOR_UNLOCK = 250;
+export const XP_FOR_BUILD = 100;
+export const getXpForNextLevel = (level: number) => 100 * Math.pow(level, 1.5);
+
 export const initialCities: City[] = [
   { id: 'c1', name: 'Aethelburg', x: 15, y: 20, demand: 5, isUnlocked: true, zone: 'A' },
   { id: 'c2', name: 'Westford', x: 25, y: 45, demand: 8, isUnlocked: true, zone: 'A' },
@@ -36,4 +41,6 @@ export const initialRoutes: Route[] = [
 
 export const initialPlayer: Player = {
   currency: 2000,
+  level: 1,
+  xp: 0,
 };

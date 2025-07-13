@@ -1,9 +1,20 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { GameLayout } from "./game-layout";
 import type { City, Route, Player } from "@/types";
-import { initialCities, initialRoutes, initialPlayer, UPGRADE_COST, UNLOCK_COST, BUILD_ROUTE_COST } from "@/lib/game-data";
+import { 
+  initialCities, 
+  initialRoutes, 
+  initialPlayer, 
+  UPGRADE_COST, 
+  UNLOCK_COST, 
+  BUILD_ROUTE_COST,
+  XP_FOR_UPGRADE,
+  XP_FOR_UNLOCK,
+  XP_FOR_BUILD,
+  getXpForNextLevel
+} from "@/lib/game-data";
 import { useToast } from "@/hooks/use-toast";
 
 export default function GameClient() {
@@ -11,6 +22,37 @@ export default function GameClient() {
   const [routes, setRoutes] = useState<Route[]>(initialRoutes);
   const [player, setPlayer] = useState<Player>(initialPlayer);
   const { toast } = useToast();
+
+  const handleLevelUp = useCallback((currentXp: number, currentLevel: number): Partial<Player> => {
+    let newXp = currentXp;
+    let newLevel = currentLevel;
+    let xpForNextLevel = getXpForNextLevel(newLevel);
+    let leveledUp = false;
+
+    while (newXp >= xpForNextLevel) {
+      newXp -= xpForNextLevel;
+      newLevel++;
+      xpForNextLevel = getXpForNextLevel(newLevel);
+      leveledUp = true;
+    }
+
+    if (leveledUp) {
+      toast({
+        title: "Level Up!",
+        description: `Congratulations! You've reached level ${newLevel}.`,
+      });
+    }
+
+    return { level: newLevel, xp: newXp };
+  }, [toast]);
+
+  const addXp = useCallback((amount: number) => {
+    setPlayer(p => {
+      const newTotalXp = p.xp + amount;
+      const levelUpdates = handleLevelUp(newTotalXp, p.level);
+      return { ...p, ...levelUpdates };
+    });
+  }, [handleLevelUp]);
 
   // Game loop for passive income
   useEffect(() => {
@@ -26,7 +68,7 @@ export default function GameClient() {
         }
       });
       setPlayer(p => ({ ...p, currency: p.currency + income }));
-    }, 2000); // Income tick every 2 seconds
+    }, 1000); // Income tick every 1 second
 
     return () => clearInterval(gameInterval);
   }, [routes, cities]);
@@ -39,6 +81,7 @@ export default function GameClient() {
 
     if (player.currency >= cost) {
       setPlayer(p => ({ ...p, currency: p.currency - cost }));
+      addXp(XP_FOR_UPGRADE);
       setRoutes(prevRoutes =>
         prevRoutes.map(r =>
           r.id === routeId
@@ -62,6 +105,7 @@ export default function GameClient() {
   const handleUnlockZone = (zone: 'B' | 'C') => {
     if (player.currency >= UNLOCK_COST) {
       setPlayer(p => ({...p, currency: p.currency - UNLOCK_COST}));
+      addXp(XP_FOR_UNLOCK);
       setCities(prevCities => prevCities.map(c => c.zone === zone ? {...c, isUnlocked: true} : c));
 
       // This is a bit complex, so we'll do it in steps.
@@ -121,6 +165,7 @@ export default function GameClient() {
     }
     
     setPlayer(p => ({...p, currency: p.currency - BUILD_ROUTE_COST}));
+    addXp(XP_FOR_BUILD);
     
     const newRoute: Route = {
       id: `r${routes.length + 1}`,

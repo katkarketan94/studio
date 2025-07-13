@@ -19,6 +19,8 @@ export interface Route {
 
 export interface Player {
   currency: number;
+  level: number;
+  xp: number;
 }
 
 export type SuggestedUpgrade = {
