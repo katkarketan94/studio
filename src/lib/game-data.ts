@@ -3,6 +3,7 @@ import type { City, Route, Player } from '@/types';
 export const UPGRADE_COST = 1500;
 export const UNLOCK_COST = 5000;
 export const BUILD_ROUTE_COST = 2500;
+export const WIN_CONDITION_CURRENCY = 1000000;
 
 export const XP_FOR_UPGRADE = 50;
 export const XP_FOR_UNLOCK = 250;

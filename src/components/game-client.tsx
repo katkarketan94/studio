@@ -13,15 +13,34 @@ import {
   XP_FOR_UPGRADE,
   XP_FOR_UNLOCK,
   XP_FOR_BUILD,
-  getXpForNextLevel
+  getXpForNextLevel,
+  WIN_CONDITION_CURRENCY
 } from "@/lib/game-data";
 import { useToast } from "@/hooks/use-toast";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
+import { PartyPopper } from "lucide-react";
 
 export default function GameClient() {
   const [cities, setCities] = useState<City[]>(initialCities);
   const [routes, setRoutes] = useState<Route[]>(initialRoutes);
   const [player, setPlayer] = useState<Player>(initialPlayer);
+  const [isGameWon, setIsGameWon] = useState(false);
   const { toast } = useToast();
+
+  const checkWinCondition = useCallback((updatedPlayer: Player, updatedCities: City[]) => {
+    const allZonesUnlocked = updatedCities.filter(c => c.zone !== 'A').every(c => c.isUnlocked);
+    if (allZonesUnlocked && updatedPlayer.currency >= WIN_CONDITION_CURRENCY) {
+      setIsGameWon(true);
+    }
+  }, []);
 
   const handleLevelUp = useCallback((currentXp: number, currentLevel: number): Partial<Player> => {
     let newXp = currentXp;
@@ -50,9 +69,11 @@ export default function GameClient() {
     setPlayer(p => {
       const newTotalXp = p.xp + amount;
       const levelUpdates = handleLevelUp(newTotalXp, p.level);
-      return { ...p, ...levelUpdates };
+      const updatedPlayer = { ...p, ...levelUpdates };
+      checkWinCondition(updatedPlayer, cities);
+      return updatedPlayer;
     });
-  }, [handleLevelUp]);
+  }, [handleLevelUp, checkWinCondition, cities]);
 
   // Game loop for passive income
   useEffect(() => {
@@ -67,20 +88,29 @@ export default function GameClient() {
           }
         }
       });
-      setPlayer(p => ({ ...p, currency: p.currency + income }));
+      setPlayer(p => {
+        const updatedPlayer = { ...p, currency: p.currency + income };
+        checkWinCondition(updatedPlayer, cities);
+        return updatedPlayer;
+      });
     }, 1000); // Income tick every 1 second
 
     return () => clearInterval(gameInterval);
-  }, [routes, cities]);
+  }, [routes, cities, checkWinCondition]);
 
   const handleUpgradeRoute = (routeId: string) => {
+    if (isGameWon) return;
     const route = routes.find(r => r.id === routeId);
     if (!route) return;
     
     const cost = UPGRADE_COST * route.level;
 
     if (player.currency >= cost) {
-      setPlayer(p => ({ ...p, currency: p.currency - cost }));
+      setPlayer(p => {
+        const updatedPlayer = { ...p, currency: p.currency - cost };
+        checkWinCondition(updatedPlayer, cities);
+        return updatedPlayer;
+      });
       addXp(XP_FOR_UPGRADE);
       setRoutes(prevRoutes =>
         prevRoutes.map(r =>
@@ -103,16 +133,20 @@ export default function GameClient() {
   };
   
   const handleUnlockZone = (zone: 'B' | 'C') => {
+    if (isGameWon) return;
     if (player.currency >= UNLOCK_COST) {
-      setPlayer(p => ({...p, currency: p.currency - UNLOCK_COST}));
+      const updatedCities = cities.map(c => c.zone === zone ? {...c, isUnlocked: true} : c);
+      setCities(updatedCities);
+
+      setPlayer(p => {
+        const updatedPlayer = {...p, currency: p.currency - UNLOCK_COST};
+        checkWinCondition(updatedPlayer, updatedCities);
+        return updatedPlayer;
+      });
       addXp(XP_FOR_UNLOCK);
-      setCities(prevCities => prevCities.map(c => c.zone === zone ? {...c, isUnlocked: true} : c));
 
       // This is a bit complex, so we'll do it in steps.
       // First, create a new map of cities with the updated unlocked status.
-      const updatedCities = initialCities.map(c => 
-        cities.some(uc => uc.id === c.id && uc.isUnlocked) || c.zone === zone ? {...c, isUnlocked: true} : c
-      );
       const cityMap = new Map(updatedCities.map(c => [c.id, c]));
 
       // Then, unlock routes where both connected cities are now unlocked.
@@ -142,6 +176,7 @@ export default function GameClient() {
   }
 
   const handleBuildRoute = (fromCityId: string, toCityId: string) => {
+    if (isGameWon) return;
     if (player.currency < BUILD_ROUTE_COST) {
       toast({
         title: "Insufficient Funds",
@@ -164,7 +199,11 @@ export default function GameClient() {
       return;
     }
     
-    setPlayer(p => ({...p, currency: p.currency - BUILD_ROUTE_COST}));
+    setPlayer(p => {
+      const updatedPlayer = {...p, currency: p.currency - BUILD_ROUTE_COST};
+      checkWinCondition(updatedPlayer, cities);
+      return updatedPlayer;
+    });
     addXp(XP_FOR_BUILD);
     
     const newRoute: Route = {
@@ -190,12 +229,31 @@ export default function GameClient() {
   const networkData = { cities, routes };
 
   return (
-    <GameLayout 
-      player={player} 
-      networkData={networkData} 
-      onUpgradeRoute={handleUpgradeRoute}
-      onUnlockZone={handleUnlockZone}
-      onBuildRoute={handleBuildRoute}
-    />
+    <>
+      <GameLayout 
+        player={player} 
+        networkData={networkData} 
+        onUpgradeRoute={handleUpgradeRoute}
+        onUnlockZone={handleUnlockZone}
+        onBuildRoute={handleBuildRoute}
+      />
+      <AlertDialog open={isGameWon}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center text-2xl">
+              <PartyPopper className="mr-4 h-8 w-8 text-accent" />
+              Congratulations, Tycoon!
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              You've successfully connected the entire nation and built a massive fortune. 
+              Your transport empire is a marvel of efficiency. You have won the game!
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction onClick={() => setIsGameWon(false)}>Continue Playing</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }
