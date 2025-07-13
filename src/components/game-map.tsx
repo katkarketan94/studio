@@ -7,6 +7,7 @@ import { Button } from "./ui/button";
 import { Lock, Zap, Hammer, X } from "lucide-react";
 import { UNLOCK_COST, UPGRADE_COST, BUILD_ROUTE_COST } from "@/lib/game-data";
 import { cn } from "@/lib/utils";
+import Image from "next/image";
 
 interface GameMapProps {
   networkData: NetworkData;
@@ -59,6 +60,14 @@ export function GameMap({ networkData, player, onUpgradeRoute, onUnlockZone, onB
       </div>
 
       <svg width="100%" height="100%" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet">
+        {/* India Map Background */}
+        <image 
+          href="https://storage.googleapis.com/prototyper-media/india-map-outline.svg" 
+          x="10" y="5" width="80" height="90"
+          className="opacity-10"
+          data-ai-hint="india map"
+        />
+
         {/* Zone Rectangles */}
         {Object.entries(zones).map(([zone, data]) => (
           !data.unlocked && (
