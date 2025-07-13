@@ -64,7 +64,7 @@ export function GameMap({ networkData, player, onUpgradeRoute, onUnlockZone, onB
         <image 
           href="https://storage.googleapis.com/prototyper-media/india-map-outline.svg" 
           x="10" y="5" width="80" height="90"
-          className="opacity-10"
+          className="opacity-20"
           data-ai-hint="india map"
         />
 
