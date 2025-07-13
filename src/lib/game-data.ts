@@ -2,6 +2,7 @@ import type { City, Route, Player } from '@/types';
 
 export const UPGRADE_COST = 1500;
 export const UNLOCK_COST = 5000;
+export const BUILD_ROUTE_COST = 2500;
 
 export const initialCities: City[] = [
   { id: 'c1', name: 'Aethelburg', x: 15, y: 20, demand: 5, isUnlocked: true, zone: 'A' },

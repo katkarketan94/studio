@@ -10,9 +10,10 @@ interface GameLayoutProps {
   networkData: NetworkData;
   onUpgradeRoute: (routeId: string) => void;
   onUnlockZone: (zone: 'B' | 'C') => void;
+  onBuildRoute: (fromCityId: string, toCityId: string) => void;
 }
 
-export function GameLayout({ player, networkData, onUpgradeRoute, onUnlockZone }: GameLayoutProps) {
+export function GameLayout({ player, networkData, onUpgradeRoute, onUnlockZone, onBuildRoute }: GameLayoutProps) {
   return (
     <SidebarProvider defaultOpen={true}>
       <div className="h-screen w-screen flex">
@@ -29,6 +30,7 @@ export function GameLayout({ player, networkData, onUpgradeRoute, onUnlockZone }
             networkData={networkData}
             onUpgradeRoute={onUpgradeRoute}
             onUnlockZone={onUnlockZone}
+            onBuildRoute={onBuildRoute}
           />
         </SidebarInset>
       </div>

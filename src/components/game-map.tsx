@@ -1,10 +1,11 @@
 "use client";
 
+import { useState } from "react";
 import type { City, Route, Player, NetworkData } from "@/types";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { Button } from "./ui/button";
-import { Lock, Zap } from "lucide-react";
-import { UNLOCK_COST, UPGRADE_COST } from "@/lib/game-data";
+import { Lock, Zap, Hammer, X } from "lucide-react";
+import { UNLOCK_COST, UPGRADE_COST, BUILD_ROUTE_COST } from "@/lib/game-data";
 import { cn } from "@/lib/utils";
 
 interface GameMapProps {
@@ -12,11 +13,15 @@ interface GameMapProps {
   player: Player;
   onUpgradeRoute: (routeId: string) => void;
   onUnlockZone: (zone: 'B' | 'C') => void;
+  onBuildRoute: (fromCityId: string, toCityId: string) => void;
 }
 
-export function GameMap({ networkData, player, onUpgradeRoute, onUnlockZone }: GameMapProps) {
+export function GameMap({ networkData, player, onUpgradeRoute, onUnlockZone, onBuildRoute }: GameMapProps) {
   const { cities, routes } = networkData;
   const cityMap = new Map(cities.map(c => [c.id, c]));
+
+  const [isBuildMode, setIsBuildMode] = useState(false);
+  const [firstCity, setFirstCity] = useState<City | null>(null);
 
   const getCity = (id: string) => cityMap.get(id);
 
@@ -25,8 +30,34 @@ export function GameMap({ networkData, player, onUpgradeRoute, onUnlockZone }: G
     C: { x: 70, y: 10, width: 25, height: 80, unlocked: cities.some(c => c.zone === 'C' && c.isUnlocked) },
   };
 
+  const handleCityClick = (city: City) => {
+    if (!isBuildMode || !city.isUnlocked) return;
+
+    if (!firstCity) {
+      setFirstCity(city);
+    } else {
+      if (firstCity.id !== city.id) {
+        onBuildRoute(firstCity.id, city.id);
+      }
+      setFirstCity(null);
+      setIsBuildMode(false);
+    }
+  };
+
+  const toggleBuildMode = () => {
+    setIsBuildMode(!isBuildMode);
+    setFirstCity(null);
+  };
+
   return (
-    <div className="w-full h-full bg-background rounded-lg shadow-inner overflow-hidden">
+    <div className="w-full h-full bg-background rounded-lg shadow-inner overflow-hidden relative">
+       <div className="absolute top-4 left-4 z-10 flex gap-2">
+        <Button onClick={toggleBuildMode} variant={isBuildMode ? "secondary" : "outline"} disabled={player.currency < BUILD_ROUTE_COST}>
+          {isBuildMode ? <X className="mr-2" /> : <Hammer className="mr-2" />}
+          {isBuildMode ? "Cancel Build" : `Build Route (${BUILD_ROUTE_COST} C)`}
+        </Button>
+      </div>
+
       <svg width="100%" height="100%" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet">
         {/* Zone Rectangles */}
         {Object.entries(zones).map(([zone, data]) => (
@@ -67,7 +98,7 @@ export function GameMap({ networkData, player, onUpgradeRoute, onUnlockZone }: G
           const canAffordUpgrade = player.currency >= UPGRADE_COST * route.level;
 
           return (
-            <g key={route.id} className={cn(!isInteractable && "pointer-events-none")}>
+            <g key={route.id} className={cn(!isInteractable && "pointer-events-none", isBuildMode && "opacity-50 pointer-events-none")}>
               <Popover>
                 <PopoverTrigger asChild disabled={!route.isUnlocked}>
                   <line
@@ -117,7 +148,25 @@ export function GameMap({ networkData, player, onUpgradeRoute, onUnlockZone }: G
 
         {/* Cities */}
         {cities.map(city => (
-          <g key={city.id} className={cn(!city.isUnlocked && "opacity-50 pointer-events-none")}>
+          <g 
+            key={city.id} 
+            className={cn(
+              !city.isUnlocked && "opacity-50 pointer-events-none", 
+              isBuildMode && city.isUnlocked && "cursor-pointer",
+              isBuildMode && !city.isUnlocked && "cursor-not-allowed"
+            )}
+            onClick={() => handleCityClick(city)}
+          >
+            <circle 
+              cx={city.x} 
+              cy={city.y} 
+              r="2.5" 
+              className={cn(
+                "fill-transparent transition-all",
+                firstCity?.id === city.id && "fill-accent/50 stroke-accent stroke-2",
+                isBuildMode && city.isUnlocked && "hover:fill-accent/30"
+              )} 
+            />
             <circle cx={city.x} cy={city.y} r="2" className="fill-primary" />
             <circle cx={city.x} cy={city.y} r="1.5" className="fill-background" />
             <text x={city.x} y={city.y - 3} className="text-[2px] font-bold fill-foreground text-anchor-middle">
@@ -125,6 +174,12 @@ export function GameMap({ networkData, player, onUpgradeRoute, onUnlockZone }: G
             </text>
           </g>
         ))}
+        
+        {isBuildMode && firstCity && (
+          <text x="50" y="95" className="text-[2px] font-bold fill-foreground text-anchor-middle animate-pulse">
+            Select a second city to build a route from {firstCity.name}.
+          </text>
+        )}
       </svg>
     </div>
   );
